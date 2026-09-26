@@ -55,6 +55,24 @@ forgejo web --custom-path /path/to/forgejo-theme
 Run `task build` on the target first: the locale is patched against the
 Forgejo version installed there, and is not committed.
 
+## Use it on Dataverket's own instance
+
+`git.dataverket.org` runs on [`fabrikk-infra`](https://git.dataverket.org/dataverket/forgejo-theme),
+which points a Flux `GitRepository` and `Kustomization` at this repo
+(`apps/forgejo/theme.yaml`). This repo's own `kustomization.yaml` turns the
+committed `public/assets/{css,img,fonts}` into three ConfigMaps, which the
+forgejo `HelmRelease` mounts straight over Forgejo's own copies. Push to
+`main`, and the running pod serves the change within one Flux reconcile - no
+rebuild, no restart.
+
+`options/locale/` can't travel that way: it has to be extracted from the
+exact Forgejo binary version running there, which git alone can't provide.
+`fabrikk-infra`'s `forgejo-theme-locale` CronJob (`apps/forgejo/theme-locale.yaml`)
+handles it separately, re-fetching `make-theme.py` and re-running `locale()`
+against the pinned image on a schedule. Because Forgejo loads locale strings
+at startup rather than serving them from disk, a copy change only reaches
+visitors after the pod's next restart.
+
 ## What lives here
 
 | File | What it is |

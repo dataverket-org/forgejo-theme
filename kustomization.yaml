@@ -1,0 +1,44 @@
+# Consumed by fabrikk-infra's forgejo-theme Kustomization, not by `task`:
+# fabrikk-infra points a GitRepository at this repo and a Kustomization at
+# its root, so every push to main regenerates these three ConfigMaps. The
+# forgejo HelmRelease mounts them straight over Forgejo's own
+# public/assets/{css,img,fonts} - see fabrikk-infra/apps/forgejo/release.yaml.
+#
+# Fixed names (disableNameSuffixHash) on purpose: release.yaml references
+# them by name, and Kubernetes syncs a mounted ConfigMap's content into the
+# running pod in place, so nothing needs to chase a content-hash suffix or
+# restart the pod for these three - Forgejo serves them straight off disk.
+#
+# options/locale/ is deliberately not here: it has to be extracted from the
+# exact Forgejo binary version running in prod, which git can't provide.
+# fabrikk-infra's forgejo-theme-locale CronJob (in apps/forgejo/) handles it
+# separately, reusing this repo's make-theme.py.
+namespace: forgejo
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+configMapGenerator:
+  - name: forgejo-theme-css
+    files:
+      - public/assets/css/theme-dataverket-auto.css
+      - public/assets/css/theme-dataverket-light.css
+      - public/assets/css/theme-dataverket-dark.css
+
+  - name: forgejo-theme-img
+    files:
+      - public/assets/img/logo.svg
+      - public/assets/img/logo-dataverket-light.svg
+      - public/assets/img/logo-dataverket-dark.svg
+      - public/assets/img/favicon.svg
+      - public/assets/img/favicon.png
+      - public/assets/img/logo.png
+      - public/assets/img/apple-touch-icon.png
+
+  - name: forgejo-theme-fonts
+    files:
+      - public/assets/fonts/inter-latin-400-normal.woff2
+      - public/assets/fonts/inter-latin-500-normal.woff2
+      - public/assets/fonts/inter-latin-600-normal.woff2
+      - public/assets/fonts/jetbrains-mono-latin-400-normal.woff2
+      - public/assets/fonts/jetbrains-mono-latin-500-normal.woff2
