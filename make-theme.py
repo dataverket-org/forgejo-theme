@@ -49,6 +49,9 @@ STEEL_L = {
 
 
 def tokens(scheme):
+    if not os.path.exists(DESIGN):
+        raise SystemExit('%s not found - run `task build` in the design '
+                         'system first' % DESIGN)
     css = io.open(DESIGN, encoding='utf-8').read()
     m = re.search(r'@layer ds\.theme\.color-scheme\.' + scheme + r' \{(.*?)\n\}',
                   css, re.S)
@@ -89,11 +92,12 @@ def variables(scheme):
     hue, _, sat = colorsys.rgb_to_hls(*rgb(g('neutral', 'base-default')))
 
     if dark:
-        # Not the design system's dark accent token: that is #9facc0, a surface
-        # colour, and a button filled with it reads as disabled. Same hue and
-        # saturation as the brand navy, lifted to L=0.50 - 3.5:1 against the
-        # dark surface and 5.1:1 for the white label, both passing.
-        h0, _, s0 = colorsys.rgb_to_hls(*rgb('#0A2A5E'))
+        # Not the design system's dark accent token: that one is a surface
+        # colour, and a button filled with it reads as disabled. The brand
+        # navy's hue and saturation, lifted to L=0.50 - 3.5:1 against the dark
+        # surface and 5.1:1 for the white label, both passing.
+        h0, _, s0 = colorsys.rgb_to_hls(
+            *rgb(tokens('light')['--ds-color-accent-base-default'].strip()))
         primary = retint(h0, s0, 0.50)
         lights = ramp([retint(h0, s0, l) for l in
                        (.57, .64, .71, .78, .84, .89, .93)])
@@ -301,6 +305,69 @@ def logo(name, fill, style=''):
     print('  public/assets/img/%s' % name)
 
 
+FONTS = ['inter-latin-%d-normal.woff2' % w for w in (400, 500, 600)] + \
+        ['jetbrains-mono-latin-%d-normal.woff2' % w for w in (400, 500)]
+
+
+BROWSERS = ['/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
+            '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+            'chromium', 'google-chrome']
+
+
+def rasters():
+    """PNG fallbacks, rendered from the SVGs.
+
+    Forgejo asks for favicon.png, and iOS wants a touch icon; neither takes an
+    SVG. A headless browser is the rasteriser because one is already needed to
+    look at the result. Without it the committed PNGs are left alone, so this
+    is a refresh step rather than a build dependency.
+    """
+    browser = next((b for b in BROWSERS
+                    if os.path.isabs(b) and os.path.exists(b)
+                    or not os.path.isabs(b) and shutil.which(b)), None)
+    if not browser:
+        print('  rasters: no headless browser, keeping the committed PNGs')
+        return
+
+    jobs = [('logo.png', 'logo-dataverket-light.svg', 'transparent'),
+            ('favicon.png', 'logo-dataverket-dark.svg', '#0f1216'),
+            ('apple-touch-icon.png', 'logo-dataverket-dark.svg', '#0f1216')]
+    tmp = tempfile.mkdtemp()
+    try:
+        for name, svg, bg in jobs:
+            page = os.path.join(tmp, name + '.html')
+            io.open(page, 'w', encoding='utf-8').write(
+                '<!doctype html><html><head><style>html,body{margin:0;'
+                'width:512px;height:512px}body{display:grid;place-items:center;'
+                'background:%s}img{width:512px}</style></head><body>'
+                '<img src="%s"></body></html>'
+                % (bg, os.path.join(IMG, svg)))
+            subprocess.run([browser, '--headless', '--disable-gpu',
+                            '--no-sandbox', '--hide-scrollbars',
+                            '--default-background-color=00000000',
+                            '--window-size=512,512',
+                            '--virtual-time-budget=4000',
+                            '--screenshot=' + os.path.join(IMG, name),
+                            'file://' + page],
+                           check=True, capture_output=True)
+            print('  public/assets/img/%s' % name)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def fonts():
+    """Copy the fonts the design system has already fetched."""
+    src = os.path.join(DESIGN_BUILD, '..', 'vendor', 'fonts', 'files')
+    dest = os.path.join(HERE, 'public', 'assets', 'fonts')
+    if not os.path.isdir(src):
+        print('  fonts: %s not found, keeping the committed copies' % src)
+        return
+    os.makedirs(dest, exist_ok=True)
+    for name in FONTS:
+        shutil.copyfile(os.path.join(src, name), os.path.join(dest, name))
+    print('  public/assets/fonts/ (%d files)' % len(FONTS))
+
+
 def logos():
     light = tokens('light')['--ds-color-accent-base-default'].strip()
     dark = tokens('dark')['--ds-color-accent-text-default'].strip()
@@ -320,6 +387,8 @@ if __name__ == '__main__':
     for scheme in ('light', 'dark', 'auto'):
         build(scheme)
     logos()
+    rasters()
+    fonts()
     forgejo = os.environ.get('FORGEJO', '/opt/homebrew/opt/forgejo/bin/forgejo')
     if os.path.exists(forgejo):
         locale(forgejo)

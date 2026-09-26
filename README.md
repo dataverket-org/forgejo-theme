@@ -24,8 +24,8 @@ per user under **Settings -> Appearance**, or change `DEFAULT_THEME` in
 |---|---|
 | `make-theme.py` | Generates everything below from the design system. |
 | `public/assets/css/theme-dataverket-*.css` | Generated. Never edit by hand. |
-| `public/assets/img/` | Logo, favicon and touch icon. Generated. |
-| `public/assets/fonts/` | Inter and JetBrains Mono, from the design system. |
+| `public/assets/img/` | Logo, favicon and touch icon. Generated; the PNGs need a headless browser, and are left alone without one. |
+| `public/assets/fonts/` | Inter and JetBrains Mono. Copied from the design system. |
 | `options/locale/` | Generated from the installed binary. Gitignored. |
 | `dev.sh` | Throwaway instance. Writes only to `.dev/`. |
 
