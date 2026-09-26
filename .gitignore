@@ -1,5 +1,8 @@
-# Local test instance. Not part of the theme.
+# Throwaway Forgejo instance. Not part of the theme.
 .dev/
+
+# The design system, cloned by `task design`.
+vendor/
 
 # Built-in themes, extracted for reference only.
 reference/
@@ -7,6 +10,9 @@ reference/
 # Extracted from the installed Forgejo and patched by make-theme.py, so it
 # always matches the running version. 3300 lines; not worth vendoring.
 options/locale/
+
+# go-task checksum cache.
+.task/
 
 # Python bytecode.
 __pycache__/

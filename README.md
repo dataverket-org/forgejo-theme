@@ -1,7 +1,8 @@
 # Forgejo theme
 
 Dataverket's light, dark and auto themes for Forgejo, generated from the
-design system in [`../org/design`](../org/design).
+design system in the [org repo](https://git.dataverket.org/dataverket/org),
+which `task` clones for you.
 
 ## What it gives you
 
@@ -17,17 +18,21 @@ design system in [`../org/design`](../org/design).
 
 ## Try it
 
-Needs `forgejo` and the `org` repo checked out beside this one. The design
-system's `build/` is committed, so nothing there has to be built first.
-
 ```sh
-brew install forgejo
-./dev.sh              # http://localhost:3000
-./dev.sh reset        # throw the instance away and start over
+brew install forgejo go-task
+
+task              # list the targets
+task dev          # fetch, generate, run on http://localhost:3000
+task reset        # throw the instance away and start over
 ```
 
-`dev.sh` regenerates, then runs Forgejo against this directory. Everything it
-writes lives in `.dev/`, which is gitignored; no real instance is touched.
+`task dev` clones the design system into `vendor/`, regenerates, then runs
+Forgejo against this directory. Everything it writes lives in `.dev/` and
+`vendor/`, both gitignored; no real instance is touched.
+
+**Everything under `public/` and `options/` is generated.** Edit
+`make-theme.py`, not its output. That is the one way this repo differs from a
+hand-authored custom directory.
 
 `dataverket-auto` follows the operating system and is the default.
 `dataverket-light` and `dataverket-dark` are fixed. Pick per user under
@@ -47,15 +52,15 @@ THEMES = dataverket-auto,dataverket-light,dataverket-dark
 forgejo web --custom-path /path/to/forgejo-theme
 ```
 
-Run `make-theme.py` on the target first: it patches the locale against the
-Forgejo version installed there.
+Run `task build` on the target first: the locale is patched against the
+Forgejo version installed there, and is not committed.
 
 ## What lives here
 
 | File | What it is |
 |---|---|
 | `make-theme.py` | The source. Generates everything below. |
-| `dev.sh` | Throwaway instance. Writes only to `.dev/`. |
+| `Taskfile.yaml` | Fetch, generate, run. |
 | `public/assets/css/` | The three themes. Generated. |
 | `public/assets/img/` | Logo, favicon, touch icon. Generated; the PNGs need a headless browser and are left alone without one. |
 | `public/assets/fonts/` | Inter and JetBrains Mono. Copied from the design system. |
@@ -130,13 +135,16 @@ Copy lives in `STARTPAGE` at the top of `make-theme.py`.
 ## Regenerating
 
 ```sh
-python3 make-theme.py
+task build        # fetches the design system if needed, then generates
+task update       # pull the latest design system
 ```
 
-Reads `../org/design/build/`, which is committed - no design-system build
-needed. Two steps degrade rather than fail: the locale needs the `forgejo`
-binary, the PNGs need a headless browser, and refreshing the fonts needs
-`task vendor` to have run in the design system. Each is skipped with a note.
+`DESIGN_BUILD` points the generator at a working copy instead of the clone.
+
+Three steps degrade rather than fail, each with a note: the locale needs the
+`forgejo` binary, the PNGs need a headless browser, and refreshing the fonts
+needs `task vendor` to have run in the design system. The committed copies are
+kept when a step is skipped.
 
 ## Known limits
 
@@ -146,8 +154,9 @@ binary, the PNGs need a headless browser, and refreshing the fonts needs
   compatibility.
 - **Images are served without a cache-busting query**, unlike the CSS. A
   visitor who saw the old logo keeps it for up to six hours.
-- **`../org/design` is a hardcoded relative path.** The two repos must sit side
-  by side.
+- **Two filenames are ours, not Forgejo's**: `logo-dataverket-light.svg` and
+  `-dark.svg`, which the themes swap between. Everything else shadows a file
+  Forgejo already ships.
 
 ## Reference
 

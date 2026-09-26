@@ -1,0 +1,103 @@
+# Requires forgejo and go-task. The design system is cloned, not assumed to
+# sit beside this repo.
+#
+#   vendor/   the design system, cloned. Not committed.
+#   .dev/     a throwaway Forgejo instance. Not committed.
+version: '3'
+
+vars:
+  ORG_REPO: 'https://git.dataverket.org/dataverket/org.git'
+  FORGEJO:
+    sh: command -v forgejo || echo /opt/homebrew/opt/forgejo/bin/forgejo
+  THEME: 'dataverket-auto'
+  PORT: '3000'
+
+tasks:
+  default:
+    silent: true
+    cmds:
+      - task --list
+
+  design:
+    desc: Fetch the design system into vendor/
+    # DESIGN_BUILD in the environment points make-theme.py at a working copy
+    # instead, which skips this.
+    status:
+      - test -d vendor/org/design/build
+    cmds:
+      - mkdir -p vendor
+      - git clone --depth 1 {{.ORG_REPO}} vendor/org
+
+  update:
+    desc: Pull the latest design system
+    cmds:
+      - git -C vendor/org pull --ff-only
+
+  build:
+    desc: Regenerate the themes, logo and locale
+    deps: [design]
+    sources: [make-theme.py]
+    generates:
+      - public/assets/css/theme-dataverket-*.css
+      - public/assets/img/*.svg
+    cmds:
+      - python3 make-theme.py
+
+  dev:
+    desc: Run a throwaway Forgejo on this theme
+    deps: [build]
+    cmds:
+      - task: conf
+      - '{{if eq OS "darwin"}}open{{else}}xdg-open{{end}} http://localhost:{{.PORT}}/ &'
+      - >-
+        {{.FORGEJO}} web
+        --config "{{.TASKFILE_DIR}}/.dev/conf/app.ini"
+        --work-path "{{.TASKFILE_DIR}}/.dev"
+        --custom-path "{{.TASKFILE_DIR}}"
+
+  conf:
+    internal: true
+    status:
+      - test -f .dev/conf/app.ini
+    cmds:
+      - mkdir -p .dev/conf .dev/data .dev/repos
+      - |
+        cat > .dev/conf/app.ini <<EOF
+        APP_NAME = Dataverket
+        RUN_MODE = prod
+        WORK_PATH = {{.TASKFILE_DIR}}/.dev
+
+        [server]
+        HTTP_PORT = {{.PORT}}
+        ROOT_URL  = http://localhost:{{.PORT}}/
+        OFFLINE_MODE = true
+
+        [database]
+        DB_TYPE = sqlite3
+        PATH    = {{.TASKFILE_DIR}}/.dev/data/forgejo.db
+
+        [repository]
+        ROOT = {{.TASKFILE_DIR}}/.dev/repos
+
+        [security]
+        INSTALL_LOCK   = true
+        SECRET_KEY     = $({{.FORGEJO}} generate secret SECRET_KEY)
+        INTERNAL_TOKEN = $({{.FORGEJO}} generate secret INTERNAL_TOKEN)
+
+        [ui]
+        DEFAULT_THEME = {{.THEME}}
+        THEMES = dataverket-auto,dataverket-light,dataverket-dark,forgejo-auto,forgejo-light,forgejo-dark
+
+        [log]
+        LEVEL = Warn
+        EOF
+
+  reset:
+    desc: Throw the instance away, keeping the generated theme
+    cmds:
+      - rm -rf .dev
+
+  clean:
+    desc: Remove the instance and the cloned design system
+    cmds:
+      - rm -rf .dev vendor __pycache__
