@@ -22,11 +22,18 @@ tasks:
     desc: Fetch the design system into vendor/
     # DESIGN_BUILD in the environment points make-theme.py at a working copy
     # instead, which skips this.
+    #
+    # Only design/ is wanted. The org repo's docs/ carries ~18 MB of PDFs and
+    # images, so the clone asks for no blobs at all and sparse-checkout then
+    # pulls in just the ones under design/ - 364 KB instead of 21 MB. A server
+    # without uploadpack.allowFilter warns and sends everything, which still
+    # works; `task update` needs no flags, the clone's config carries both.
     status:
       - test -d vendor/org/design/build
     cmds:
       - mkdir -p vendor
-      - git clone --depth 1 {{.ORG_REPO}} vendor/org
+      - git clone --depth 1 --filter=blob:none --sparse {{.ORG_REPO}} vendor/org
+      - git -C vendor/org sparse-checkout set design
 
   update:
     desc: Pull the latest design system
