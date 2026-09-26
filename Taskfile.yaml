@@ -7,8 +7,7 @@ version: '3'
 
 vars:
   ORG_REPO: 'https://git.dataverket.org/dataverket/org.git'
-  FORGEJO:
-    sh: command -v forgejo || echo /opt/homebrew/opt/forgejo/bin/forgejo
+  FORGEJO: 'forgejo'
   THEME: 'dataverket-auto'
   PORT: '3000'
 

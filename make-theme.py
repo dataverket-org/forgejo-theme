@@ -393,8 +393,11 @@ if __name__ == '__main__':
     logos()
     rasters()
     fonts()
-    forgejo = os.environ.get('FORGEJO', '/opt/homebrew/opt/forgejo/bin/forgejo')
-    if os.path.exists(forgejo):
-        locale(forgejo)
+    # PATH finds it; FORGEJO overrides with a command name or an absolute
+    # path, which shutil.which resolves either way.
+    forgejo = os.environ.get('FORGEJO', 'forgejo')
+    found = shutil.which(forgejo)
+    if found:
+        locale(found)
     else:
         print('  skipping locale: %s not found' % forgejo)
