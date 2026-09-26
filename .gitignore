@@ -1,0 +1,9 @@
+# Local test instance. Not part of the theme.
+.dev/
+
+# Built-in themes, extracted for reference only.
+reference/
+
+# Extracted from the installed Forgejo and patched by make-theme.py, so it
+# always matches the running version. 3300 lines; not worth vendoring.
+options/locale/
