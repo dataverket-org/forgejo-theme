@@ -267,7 +267,7 @@ LOCALE = 'options/locale/locale_en-US.ini'
 
 
 def locale(forgejo):
-    """Extract en-US from the installed binary and patch the landing page."""
+    """Extracts en-US from the installed binary and patches the landing page."""
     tmp = tempfile.mkdtemp()
     try:
         subprocess.run([forgejo, 'embedded', 'extract', '--destination', tmp, LOCALE],
@@ -278,11 +278,10 @@ def locale(forgejo):
 
 
 def locale_from(path):
-    """Patch the landing page into an en-US locale file.
+    """Patches the landing page into an en-US locale file.
 
-    The file is the one Forgejo embeds, which is options/locale/locale_en-US.ini
-    in its source at the release tag, byte for byte. fabrikk-infra's render
-    reads it from there, so no Forgejo binary needs to run on the build host.
+    The file Forgejo embeds is options/locale/locale_en-US.ini in its source
+    at the release tag, byte for byte; fabrikk-infra's render reads it there.
     """
     src = io.open(path, encoding='utf-8').read()
 
