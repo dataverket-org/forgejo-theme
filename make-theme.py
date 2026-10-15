@@ -263,16 +263,28 @@ STARTPAGE = {
 
 
 
+LOCALE = 'options/locale/locale_en-US.ini'
+
+
 def locale(forgejo):
-    """Extract en-US from the running binary and patch the landing page."""
-    rel = 'options/locale/locale_en-US.ini'
+    """Extract en-US from the installed binary and patch the landing page."""
     tmp = tempfile.mkdtemp()
     try:
-        subprocess.run([forgejo, 'embedded', 'extract', '--destination', tmp, rel],
+        subprocess.run([forgejo, 'embedded', 'extract', '--destination', tmp, LOCALE],
                        check=True, capture_output=True)
-        src = io.open(os.path.join(tmp, rel), encoding='utf-8').read()
+        locale_from(os.path.join(tmp, LOCALE))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+def locale_from(path):
+    """Patch the landing page into an en-US locale file.
+
+    The file is the one Forgejo embeds, which is options/locale/locale_en-US.ini
+    in its source at the release tag, byte for byte. fabrikk-infra's render
+    reads it from there, so no Forgejo binary needs to run on the build host.
+    """
+    src = io.open(path, encoding='utf-8').read()
 
     def patch(m):
         block = m.group(2)
@@ -281,10 +293,10 @@ def locale(forgejo):
         return m.group(1) + block
 
     out = re.sub(r'(\[startpage\]\n)((?:.*\n)*?)(?=\[)', patch, src, count=1)
-    dest = os.path.join(HERE, rel)
+    dest = os.path.join(HERE, LOCALE)
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     io.open(dest, 'w', encoding='utf-8').write(out)
-    print('  %s (patched %d keys)' % (rel, len(STARTPAGE)))
+    print('  %s (patched %d keys)' % (LOCALE, len(STARTPAGE)))
 
 
 def shapes():

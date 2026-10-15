@@ -57,21 +57,19 @@ Forgejo version installed there, and is not committed.
 
 ## Use it on Dataverket's own instance
 
-`git.dataverket.org` runs on [`fabrikk-infra`](https://git.dataverket.org/dataverket/forgejo-theme),
-which points a Flux `GitRepository` and `Kustomization` at this repo
-(`apps/forgejo/theme.yaml`). This repo's own `kustomization.yaml` turns the
-committed `public/assets/{css,img,fonts}` into three ConfigMaps, which the
-forgejo `HelmRelease` mounts straight over Forgejo's own copies. Push to
-`main`, and the running pod serves the change within one Flux reconcile - no
-rebuild, no restart.
+`git.dataverket.org` runs on [`fabrikk-infra`](https://git.dataverket.org/dataverket/fabrikk-infra),
+which builds the theme into an OCI artifact rather than reading this repo
+(`artifacts/forgejo-theme/` there). Its `render.sh` checks out a pinned commit
+of this repo, takes `public/assets/{css,img,fonts}` as committed, and patches
+the locale with `locale_from()` from the file Forgejo embeds, which is
+`options/locale/locale_en-US.ini` in Forgejo's source at the release tag of
+the chart that runs. The result is four ConfigMaps the forgejo `HelmRelease`
+mounts over Forgejo's own copies.
 
-`options/locale/` can't travel that way: it has to be extracted from the
-exact Forgejo binary version running there, which git alone can't provide.
-`fabrikk-infra`'s `forgejo-theme-locale` CronJob (`apps/forgejo/theme-locale.yaml`)
-handles it separately, re-fetching `make-theme.py` and re-running `locale()`
-against the pinned image on a schedule. Because Forgejo loads locale strings
-at startup rather than serving them from disk, a copy change only reaches
-visitors after the pod's next restart.
+So a change here reaches the forge when `fabrikk-infra` moves its pin, renders
+and pushes. Forgejo loads locale strings at startup, so a copy change reaches
+visitors after the pod's next restart; the CSS, images and fonts are served
+straight off the mounts.
 
 ## What lives here
 
